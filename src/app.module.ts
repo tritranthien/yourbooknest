@@ -19,6 +19,7 @@ import { FollowsModule } from './follows/follows.module';
 import { RatingsModule } from './ratings/ratings.module';
 import { CategoriesModule } from './categories/categories.module';
 import { AuthorsModule } from './authors/authors.module';
+import { FilesModule } from './files/files.module';
 
 @Module({
   imports: [
@@ -50,8 +51,9 @@ import { AuthorsModule } from './authors/authors.module';
     RatingsModule,
     CategoriesModule,
     AuthorsModule,
+    FilesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

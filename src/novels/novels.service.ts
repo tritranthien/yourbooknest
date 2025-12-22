@@ -9,9 +9,9 @@ export class NovelsService {
   constructor(
     @InjectModel(Novel.name) private novelModel: Model<NovelDocument>,
     @InjectModel(Chap.name) private chapModel: Model<ChapDocument>,
-  ) {}
+  ) { }
 
-  async getNewNovels(limit: number = 15): Promise<Novel[]> {
+  async getNewNovels(limit: number = 20): Promise<Novel[]> {
     return this.novelModel
       .find({})
       .sort({ createdAt: -1 })
@@ -42,7 +42,7 @@ export class NovelsService {
   }
 
   async getHasNewChap() {
-    return this.getBySort({}, { updatedAt: -1 }); // Fallback
+    return this.getBySort({}, { updatedAt: -1 }, 20); // Fallback
   }
 
   async getMostViews() {
