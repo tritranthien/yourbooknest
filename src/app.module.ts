@@ -11,6 +11,7 @@ import { ChapSchema } from './schemas/chap.schema';
 import { CommentSchema } from './schemas/comment.schema';
 import { FollowSchema } from './schemas/follow.schema';
 import { RatingSchema } from './schemas/rating.schema';
+import { SettingSchema } from './schemas/setting.schema';
 import { NovelsModule } from './novels/novels.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
@@ -20,6 +21,8 @@ import { RatingsModule } from './ratings/ratings.module';
 import { CategoriesModule } from './categories/categories.module';
 import { AuthorsModule } from './authors/authors.module';
 import { FilesModule } from './files/files.module';
+import { AdminModule } from './admin/admin.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -42,6 +45,7 @@ import { FilesModule } from './files/files.module';
       { name: 'Cmt', schema: CommentSchema },
       { name: 'Follow', schema: FollowSchema },
       { name: 'Ratting', schema: RatingSchema },
+      { name: 'Setting', schema: SettingSchema },
     ]),
     NovelsModule,
     UsersModule,
@@ -52,6 +56,8 @@ import { FilesModule } from './files/files.module';
     CategoriesModule,
     AuthorsModule,
     FilesModule,
+    AdminModule,
+    SettingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

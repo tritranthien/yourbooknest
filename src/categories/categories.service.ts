@@ -11,11 +11,26 @@ export class CategoriesService {
     @InjectModel('Cate') private categoryModel: Model<CategoryDocument>,
   ) {}
 
+  async create(createCategoryDto: CreateCategoryDto) {
+    const createdCategory = new this.categoryModel(createCategoryDto);
+    return createdCategory.save();
+  }
+
   async findAll() {
-    return this.categoryModel.find().exec();
+    return this.categoryModel.find().sort({ cate: 1 }).exec();
   }
 
   async findBySlug(slug: string) {
     return this.categoryModel.findOne({ slug }).exec();
+  }
+
+  async update(id: string, updateCategoryDto: UpdateCategoryDto) {
+    return this.categoryModel
+      .findByIdAndUpdate(id, updateCategoryDto, { new: true })
+      .exec();
+  }
+
+  async remove(id: string) {
+    return this.categoryModel.findByIdAndDelete(id).exec();
   }
 }

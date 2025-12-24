@@ -91,6 +91,7 @@ export class NovelsService {
 
   async getPaged(query: any, sort: any, page: number = 1, limit: number = 20) {
     const skip = (page - 1) * limit;
+    console.log('[Service] getPaged Query:', JSON.stringify(query));
     const novels = await this.novelModel
       .find(query)
       .populate('author')
@@ -101,6 +102,7 @@ export class NovelsService {
       .limit(limit)
       .exec();
     const total = await this.novelModel.countDocuments(query);
+    console.log('[Service] getPaged Total:', total);
     return { novels, total };
   }
 
@@ -128,5 +130,23 @@ export class NovelsService {
       .populate('category')
       .limit(20)
       .exec();
+  }
+
+  async update(id: string, updateNovelDto: any): Promise<Novel> {
+    const updatedNovel = await this.novelModel
+      .findByIdAndUpdate(id, updateNovelDto, { new: true })
+      .exec();
+    if (!updatedNovel) {
+      throw new Error('Novel not found');
+    }
+    return updatedNovel;
+  }
+
+  async remove(id: string): Promise<any> {
+    const result = await this.novelModel.findByIdAndDelete(id).exec();
+    if (!result) {
+      throw new Error('Novel not found');
+    }
+    return result;
   }
 }

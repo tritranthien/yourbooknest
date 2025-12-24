@@ -39,6 +39,9 @@ export class User {
 
   @Prop({ default: 20 })
   goldcard: number;
+
+  @Prop({ default: 'user', enum: ['user', 'admin'] })
+  role: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

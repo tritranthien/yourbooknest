@@ -19,4 +19,12 @@ export class UsersService {
     const createdUser = new this.userModel(createUserDto);
     return createdUser.save();
   }
+
+  async findAll(): Promise<UserDocument[]> {
+    return this.userModel.find().exec();
+  }
+
+  async countDocuments(): Promise<number> {
+    return this.userModel.countDocuments().exec();
+  }
 }

@@ -11,7 +11,12 @@ async function bootstrap() {
     AppModule,
     new FastifyAdapter({ ignoreTrailingSlash: true }),
   );
-  app.enableCors();
+  app.enableCors({
+    origin: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+    allowedHeaders: 'Content-Type, Accept, Authorization',
+  });
   await app.register(multipart);
   await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
 }

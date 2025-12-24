@@ -18,5 +18,6 @@ import { RatingsModule } from '../ratings/ratings.module';
   ],
   controllers: [NovelsController],
   providers: [NovelsService],
+  exports: [NovelsService],
 })
 export class NovelsModule {}
