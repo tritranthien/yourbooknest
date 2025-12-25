@@ -4,11 +4,12 @@ import * as streamifier from 'streamifier';
 
 @Injectable()
 export class FilesService {
-    async uploadFile(file: Buffer): Promise<UploadApiResponse | UploadApiErrorResponse> {
+    async uploadFile(file: Buffer, resourceType: 'image' | 'raw' | 'auto' = 'auto', folder: string = 'bookposter'): Promise<UploadApiResponse | UploadApiErrorResponse> {
         return new Promise((resolve, reject) => {
             const uploadStream = cloudinary.uploader.upload_stream(
                 {
-                    folder: 'bookposter',
+                    folder: folder,
+                    resource_type: resourceType,
                 },
                 (error, result) => {
                     if (error) return reject(error);

@@ -19,7 +19,27 @@ export class FilesController {
 
         const buffer = await data.toBuffer();
         try {
-            const result = await this.filesService.uploadFile(buffer);
+            const result = await this.filesService.uploadFile(buffer, 'image', 'bookposter');
+            return result;
+        } catch (error) {
+            throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @Post('font')
+    async uploadFont(@Req() req: FastifyRequest) {
+        if (!req.isMultipart()) {
+            throw new HttpException('Multipart form expected', HttpStatus.BAD_REQUEST);
+        }
+
+        const data = await req.file();
+        if (!data) {
+            throw new HttpException('File not found', HttpStatus.BAD_REQUEST);
+        }
+
+        const buffer = await data.toBuffer();
+        try {
+            const result = await this.filesService.uploadFile(buffer, 'raw', 'bookfonts');
             return result;
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);

@@ -22,6 +22,9 @@ export class Author {
 
   @Prop()
   slug: string;
+
+  @Prop({ default: true })
+  editable: boolean;
 }
 
 export const AuthorSchema = SchemaFactory.createForClass(Author);

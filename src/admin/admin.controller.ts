@@ -26,8 +26,26 @@ export class AdminController {
   }
 
   @Get('users')
-  async getUsers() {
-    return this.usersService.findAll();
+  async getUsers(@Query() allQuery: any) {
+    const { search, role, page, limit } = allQuery;
+    const query: any = {};
+    if (search && search.trim() !== '') {
+      query.$or = [
+        { username: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+      ];
+    }
+    if (role && role.trim() !== '' && role !== 'undefined') {
+      const roles = Array.isArray(role) ? role : role.toString().split(',').filter(r => r.trim() !== '');
+      if (roles.length > 0) {
+        query.role = { $in: roles };
+      }
+    }
+
+    const pageNum = parseInt(page as any) || 1;
+    const limitNum = parseInt(limit as any) || 20;
+
+    return this.usersService.getPaged(query, { createdAt: -1 }, pageNum, limitNum);
   }
 
   @Get('novels')
@@ -38,15 +56,27 @@ export class AdminController {
     if (title && title.trim() !== '') {
       query.title = { $regex: title, $options: 'i' };
     }
-    if (categoryId && categoryId.trim() !== '' && categoryId !== 'undefined') {
-      try {
-        query.category = new Types.ObjectId(categoryId);
-      } catch (e) {
-        query.category = categoryId;
+    if (categoryId && categoryId !== '' && categoryId !== 'undefined') {
+      const categoryIds = Array.isArray(categoryId) ? categoryId : categoryId.toString().split(',').filter(id => id.trim() !== '');
+      if (categoryIds.length > 0) {
+        query.category = { $in: categoryIds.map(id => {
+          try { return new Types.ObjectId(id); } catch (e) { return id; }
+        }) };
       }
     }
-    if (status && status.trim() !== '' && status !== 'undefined') {
-      query.status = status;
+    if (status && status !== '' && status !== 'undefined') {
+      const statuses = Array.isArray(status) ? status : status.toString().split(',').filter(s => s.trim() !== '');
+      if (statuses.length > 0) {
+        query.status = { $in: statuses };
+      }
+    }
+    if (allQuery.authorId && allQuery.authorId !== '' && allQuery.authorId !== 'undefined') {
+      const authorIds = Array.isArray(allQuery.authorId) ? allQuery.authorId : allQuery.authorId.toString().split(',').filter(id => id.trim() !== '');
+      if (authorIds.length > 0) {
+        query.author = { $in: authorIds.map(id => {
+          try { return new Types.ObjectId(id); } catch (e) { return id; }
+        }) };
+      }
     }
 
     const pageNum = parseInt(page as any) || 1;

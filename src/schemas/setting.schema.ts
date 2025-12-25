@@ -30,6 +30,9 @@ export class Setting {
 
   @Prop({ default: false })
   defaultNightMode: boolean;
+
+  @Prop({ type: [{ name: String, url: String }], default: [] })
+  customFonts: { name: string, url: string }[];
 }
 
 export const SettingSchema = SchemaFactory.createForClass(Setting);

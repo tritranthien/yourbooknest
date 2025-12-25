@@ -24,7 +24,19 @@ export class UsersService {
     return this.userModel.find().exec();
   }
 
-  async countDocuments(): Promise<number> {
-    return this.userModel.countDocuments().exec();
+  async getPaged(query: any, sort: any, page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+    const users = await this.userModel
+      .find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .exec();
+    const total = await this.userModel.countDocuments(query);
+    return { users, total };
+  }
+
+  async countDocuments(query: any = {}): Promise<number> {
+    return this.userModel.countDocuments(query).exec();
   }
 }

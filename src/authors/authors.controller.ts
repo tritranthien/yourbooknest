@@ -14,8 +14,8 @@ export class AuthorsController {
   }
 
   @Get('all')
-  findAll() {
-    return this.authorsService.findAll();
+  findAll(@Query('name') name?: string, @Query('novel') novel?: string) {
+    return this.authorsService.findAll(name, novel);
   }
 
   @Get('getbyslug/:slug')
