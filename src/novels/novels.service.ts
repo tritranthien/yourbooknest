@@ -114,6 +114,10 @@ export class NovelsService {
     return this.getPaged({ category: cateId, status: 'completed' }, { updatedAt: -1 }, page, 15);
   }
 
+  async getBestViewsByCate(cateId: string, page: number = 1) {
+    return this.getPaged({ category: cateId }, { views: -1 }, page, 15);
+  }
+
   async getByAuthor(authorId: string) {
     return this.novelModel
       .find({ author: authorId })

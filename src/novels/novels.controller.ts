@@ -176,6 +176,14 @@ export class NovelsController {
     return this.novelsService.getCompletedByCate(cateId, page);
   }
 
+  @Get('bestviews/:cateId')
+  async getBestViewsByCate(
+    @Param('cateId') cateId: string,
+    @Query('page') page: number,
+  ) {
+    return this.novelsService.getBestViewsByCate(cateId, page);
+  }
+
   @Get('getbyauthor/:authorId')
   async getByAuthor(@Param('authorId') authorId: string) {
     return this.novelsService.getByAuthor(authorId);

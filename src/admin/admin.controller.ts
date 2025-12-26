@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Delete, Body, Param, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Body, Param, UseGuards, Query, Request } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -26,9 +26,14 @@ export class AdminController {
   }
 
   @Get('users')
-  async getUsers(@Query() allQuery: any) {
+  async getUsers(@Query() allQuery: any, @Request() req) {
     const { search, role, page, limit } = allQuery;
     const query: any = {};
+
+    if (req.user && req.user._id) {
+      query._id = { $ne: req.user._id };
+    }
+
     if (search && search.trim() !== '') {
       query.$or = [
         { username: { $regex: search, $options: 'i' } },
