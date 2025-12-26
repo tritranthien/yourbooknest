@@ -1,15 +1,78 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
+import { CreateNovelDto } from './dto/create-novel.dto';
+import { slugify } from '../utils/slugify';
 import { Novel, NovelDocument } from '../schemas/novel.schema';
 import { Chap, ChapDocument } from '../schemas/chap.schema';
+import { Tag, TagDocument } from '../schemas/tag.schema';
 
 @Injectable()
 export class NovelsService {
   constructor(
     @InjectModel(Novel.name) private novelModel: Model<NovelDocument>,
     @InjectModel(Chap.name) private chapModel: Model<ChapDocument>,
+    @InjectModel(Tag.name) private tagModel: Model<TagDocument>,
   ) { }
+
+  private async processTags(tagNamesOrIds: string[]): Promise<{ tagId: Types.ObjectId; name: string }[]> {
+    if (!tagNamesOrIds || tagNamesOrIds.length === 0) return [];
+    
+    const result: { tagId: Types.ObjectId, name: string }[] = [];
+    const uniqueIds = new Set<string>();
+
+    for (const item of tagNamesOrIds) {
+      if (!item) continue;
+      
+      let tag: TagDocument | null = null;
+      if (Types.ObjectId.isValid(item)) {
+        tag = await this.tagModel.findById(item).exec();
+      }
+
+      if (!tag) {
+        // Find by name (case-insensitive via slug)
+        const slug = slugify(item);
+        tag = await this.tagModel.findOne({ slug }).exec();
+      }
+
+      if (!tag) {
+        // Create new tag automatically
+        tag = await this.tagModel.create({
+          name: item,
+          slug: slugify(item),
+          description: `Tạo tự động từ truyện`
+        });
+      }
+
+      if (tag && !uniqueIds.has(tag._id.toString())) {
+        uniqueIds.add(tag._id.toString());
+        result.push({
+          tagId: tag._id as Types.ObjectId,
+          name: tag.name
+        });
+      }
+    }
+    return result;
+  }
+
+  async create(createNovelDto: CreateNovelDto, posterId: string): Promise<Novel> {
+    const slugBase = slugify(createNovelDto.title);
+    let slug = slugBase;
+    let count = 1;
+    while (await this.novelModel.findOne({ slug }).exec()) {
+      slug = `${slugBase}-${count++}`;
+    }
+
+    const tags = await this.processTags(createNovelDto.tags || []);
+
+    const createdNovel = new this.novelModel({
+      ...createNovelDto,
+      tags,
+      slug,
+      poster: posterId,
+    });
+    return createdNovel.save();
+  }
 
   async getNewNovels(limit: number = 20): Promise<Novel[]> {
     return this.novelModel
@@ -17,6 +80,7 @@ export class NovelsService {
       .sort({ createdAt: -1 })
       .populate('author')
       .populate('category')
+      .populate('tags.tagId')
       .populate('chapCount')
       .limit(limit)
       .exec();
@@ -28,6 +92,7 @@ export class NovelsService {
       .sort(sort)
       .populate('author')
       .populate('category')
+      .populate('tags.tagId')
       .populate('chapCount')
       .limit(limit)
       .exec();
@@ -70,6 +135,7 @@ export class NovelsService {
       .findOne({ slug })
       .populate('author')
       .populate('category')
+      .populate('tags.tagId')
       .populate('chapCount')
       .exec();
     if (!novel) {
@@ -96,6 +162,7 @@ export class NovelsService {
       .find(query)
       .populate('author')
       .populate('category')
+      .populate('tags.tagId')
       .populate('chapCount')
       .sort(sort)
       .skip(skip)
@@ -137,8 +204,12 @@ export class NovelsService {
   }
 
   async update(id: string, updateNovelDto: any): Promise<Novel> {
+    const data = { ...updateNovelDto };
+    if (data.tags) {
+      data.tags = await this.processTags(data.tags);
+    }
     const updatedNovel = await this.novelModel
-      .findByIdAndUpdate(id, updateNovelDto, { new: true })
+      .findByIdAndUpdate(id, data, { new: true })
       .exec();
     if (!updatedNovel) {
       throw new Error('Novel not found');

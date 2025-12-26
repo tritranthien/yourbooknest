@@ -83,6 +83,14 @@ export class AdminController {
         }) };
       }
     }
+    if (allQuery.tagIds && allQuery.tagIds !== '' && allQuery.tagIds !== 'undefined') {
+      const tagIds = Array.isArray(allQuery.tagIds) ? allQuery.tagIds : allQuery.tagIds.toString().split(',').filter(id => id.trim() !== '');
+      if (tagIds.length > 0) {
+        query['tags.tagId'] = { $in: tagIds.map(id => {
+          try { return new Types.ObjectId(id); } catch (e) { return id; }
+        }) };
+      }
+    }
 
     const pageNum = parseInt(page as any) || 1;
     const limitNum = parseInt(limit as any) || 20;

@@ -53,6 +53,17 @@ export class Novel {
 
   @Prop({ default: false })
   modvote: boolean;
+
+  @Prop({
+    type: [
+      {
+        tagId: { type: Types.ObjectId, ref: 'Tag' },
+        name: String,
+      },
+    ],
+    _id: false,
+  })
+  tags: { tagId: Types.ObjectId; name: string }[];
 }
 
 export const NovelSchema = SchemaFactory.createForClass(Novel);

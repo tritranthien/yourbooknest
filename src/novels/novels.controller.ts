@@ -12,6 +12,7 @@ import {
 import { NovelsService } from './novels.service';
 import { FollowsService } from '../follows/follows.service';
 import { RatingsService } from '../ratings/ratings.service';
+import { CreateNovelDto } from './dto/create-novel.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('novels')
@@ -21,6 +22,12 @@ export class NovelsController {
     private readonly followsService: FollowsService,
     private readonly ratingsService: RatingsService,
   ) {}
+
+  @UseGuards(JwtAuthGuard)
+  @Post()
+  async create(@Body() createNovelDto: CreateNovelDto, @Request() req) {
+    return this.novelsService.create(createNovelDto, req.user._id);
+  }
 
   @Get('new')
   async getNewNovels() {

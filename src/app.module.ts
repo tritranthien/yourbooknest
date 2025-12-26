@@ -12,6 +12,7 @@ import { CommentSchema } from './schemas/comment.schema';
 import { FollowSchema } from './schemas/follow.schema';
 import { RatingSchema } from './schemas/rating.schema';
 import { SettingSchema } from './schemas/setting.schema';
+import { TagSchema } from './schemas/tag.schema';
 import { NovelsModule } from './novels/novels.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
@@ -23,6 +24,7 @@ import { AuthorsModule } from './authors/authors.module';
 import { FilesModule } from './files/files.module';
 import { AdminModule } from './admin/admin.module';
 import { SettingsModule } from './settings/settings.module';
+import { TagsModule } from './tags/tags.module';
 
 @Module({
   imports: [
@@ -46,6 +48,7 @@ import { SettingsModule } from './settings/settings.module';
       { name: 'Follow', schema: FollowSchema },
       { name: 'Ratting', schema: RatingSchema },
       { name: 'Setting', schema: SettingSchema },
+      { name: 'Tag', schema: TagSchema },
     ]),
     NovelsModule,
     UsersModule,
@@ -58,6 +61,7 @@ import { SettingsModule } from './settings/settings.module';
     FilesModule,
     AdminModule,
     SettingsModule,
+    TagsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
