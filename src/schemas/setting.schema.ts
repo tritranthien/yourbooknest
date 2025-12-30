@@ -21,6 +21,9 @@ export class Setting {
   @Prop({ default: false })
   commentPreApproval: boolean;
 
+  @Prop({ default: false })
+  autoApproveNovel: boolean;
+
   // Reading settings
   @Prop({ default: 'Inter' })
   defaultFont: string;

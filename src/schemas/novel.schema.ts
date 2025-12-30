@@ -54,6 +54,9 @@ export class Novel {
   @Prop({ default: false })
   modvote: boolean;
 
+  @Prop({ default: false })
+  isApproved: boolean;
+
   @Prop({
     type: [
       {

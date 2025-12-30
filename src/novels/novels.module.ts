@@ -7,6 +7,7 @@ import { Chap, ChapSchema } from '../schemas/chap.schema';
 import { Tag, TagSchema } from '../schemas/tag.schema';
 import { FollowsModule } from '../follows/follows.module';
 import { RatingsModule } from '../ratings/ratings.module';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { RatingsModule } from '../ratings/ratings.module';
     ]),
     FollowsModule,
     RatingsModule,
+    SettingsModule,
   ],
   controllers: [NovelsController],
   providers: [NovelsService],

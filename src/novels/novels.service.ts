@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CreateNovelDto } from './dto/create-novel.dto';
@@ -6,14 +6,56 @@ import { slugify } from '../utils/slugify';
 import { Novel, NovelDocument } from '../schemas/novel.schema';
 import { Chap, ChapDocument } from '../schemas/chap.schema';
 import { Tag, TagDocument } from '../schemas/tag.schema';
+import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
-export class NovelsService {
+export class NovelsService implements OnModuleInit {
   constructor(
     @InjectModel(Novel.name) private novelModel: Model<NovelDocument>,
     @InjectModel(Chap.name) private chapModel: Model<ChapDocument>,
     @InjectModel(Tag.name) private tagModel: Model<TagDocument>,
+    private settingsService: SettingsService,
   ) { }
+
+  async onModuleInit() {
+    // Migrations: Approve all existing novels if they don't have isApproved field
+    // (In reality, since we just added it, many might be 'false' by default from Mongoose)
+    // We only want to do this once. Let's just approve everything that isn't specifically disapproved if it's an old book.
+    // For now, let's just approve all existing ones to avoid breaking the site.
+    const result = await this.novelModel.updateMany(
+      { isApproved: { $exists: false } },
+      { $set: { isApproved: true } }
+    );
+    if (result.modifiedCount > 0) {
+      console.log(`Approved ${result.modifiedCount} existing novels.`);
+    }
+  }
+
+  async getPendingNovels(page: number = 1, limit: number = 20): Promise<{ novels: Novel[], total: number }> {
+    const skip = (page - 1) * limit;
+    const [novels, total] = await Promise.all([
+      this.novelModel
+        .find({ isApproved: false })
+        .sort({ createdAt: -1 })
+        .populate('author')
+        .populate('category')
+        .populate('poster', 'username email')
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      this.novelModel.countDocuments({ isApproved: false }),
+    ]);
+    return { novels, total };
+  }
+
+  async approveNovel(id: string): Promise<Novel | null> {
+    return this.novelModel.findByIdAndUpdate(id, { isApproved: true }, { new: true }).exec();
+  }
+
+  async rejectNovel(id: string): Promise<any> {
+    // Can either delete or mark as rejected. Deleting is cleaner for now.
+    return this.novelModel.findByIdAndDelete(id).exec();
+  }
 
   private async processTags(tagNamesOrIds: string[]): Promise<{ tagId: Types.ObjectId; name: string }[]> {
     if (!tagNamesOrIds || tagNamesOrIds.length === 0) return [];
@@ -64,19 +106,21 @@ export class NovelsService {
     }
 
     const tags = await this.processTags(createNovelDto.tags || []);
+    const settings = await this.settingsService.getSettings();
 
     const createdNovel = new this.novelModel({
       ...createNovelDto,
       tags,
       slug,
       poster: posterId,
+      isApproved: settings.autoApproveNovel,
     });
     return createdNovel.save();
   }
 
   async getNewNovels(limit: number = 20): Promise<Novel[]> {
     return this.novelModel
-      .find({})
+      .find({ isApproved: true })
       .sort({ createdAt: -1 })
       .populate('author')
       .populate('category')
@@ -88,7 +132,7 @@ export class NovelsService {
 
   async getBySort(query: any, sort: any, limit: number = 10): Promise<Novel[]> {
     return this.novelModel
-      .find(query)
+      .find({ ...query, isApproved: true })
       .sort(sort)
       .populate('author')
       .populate('category')
@@ -132,7 +176,7 @@ export class NovelsService {
 
   async getNovelBySlug(slug: string): Promise<Novel> {
     const novel = await this.novelModel
-      .findOne({ slug })
+      .findOne({ slug, isApproved: true })
       .populate('author')
       .populate('category')
       .populate('tags.tagId')
@@ -144,22 +188,72 @@ export class NovelsService {
     return novel;
   }
 
-  async getChaps(novelId: string, page: number = 1): Promise<Chap[]> {
+  async getChaps(novelId: string, page: number = 1): Promise<any> {
     const limit = 50;
     const skip = (page - 1) * limit;
+    
+    const objectId = Types.ObjectId.isValid(novelId) ? new Types.ObjectId(novelId) : null;
+    const query = objectId ? { novel: objectId } : { novel: novelId };
+
     return this.chapModel
-      .find({ novel: novelId }, { content: 0 }) // Exclude content for list view
+      .find(query, { content: 0 }) // Exclude content for list view
       .sort({ chap: 1 })
       .skip(skip)
       .limit(limit)
       .exec();
   }
 
+  async getChap(novelId: string, chapNum: number): Promise<any> {
+    const num = Number(chapNum);
+    
+    // Resolve novel first
+    let novel;
+    if (Types.ObjectId.isValid(novelId)) {
+      novel = await this.novelModel.findById(novelId).exec();
+    }
+    if (!novel) {
+      novel = await this.novelModel.findOne({ slug: novelId }).exec();
+    }
+
+    if (!novel) {
+      throw new NotFoundException('Truyện không tồn tại');
+    }
+
+    // Optional: Check approval for public, but for now we'll allow viewing if you have the ID/slug
+    // to help the user test.
+
+    const chap = await this.chapModel
+      .findOne({ novel: novel._id, chap: num })
+      .populate('novel')
+      .populate('poster', 'username email')
+      .exec();
+
+    if (!chap) {
+      throw new NotFoundException('Chương không tồn tại');
+    }
+    return chap;
+  }
+
+  async createChap(createChapDto: any, posterId: string): Promise<any> {
+    const novel = await this.novelModel.findById(createChapDto.novel).exec();
+    if (!novel) throw new Error('Novel not found');
+
+    const chap = await this.chapModel.create({
+      ...createChapDto,
+      poster: posterId,
+    });
+
+    // Update novel updatedAt
+    await this.novelModel.findByIdAndUpdate(createChapDto.novel, { updatedAt: new Date() }).exec();
+
+    return chap;
+  }
+
   async getPaged(query: any, sort: any, page: number = 1, limit: number = 20) {
     const skip = (page - 1) * limit;
     console.log('[Service] getPaged Query:', JSON.stringify(query));
     const novels = await this.novelModel
-      .find(query)
+      .find({ ...query, isApproved: true })
       .populate('author')
       .populate('category')
       .populate('tags.tagId')
@@ -168,7 +262,7 @@ export class NovelsService {
       .skip(skip)
       .limit(limit)
       .exec();
-    const total = await this.novelModel.countDocuments(query);
+    const total = await this.novelModel.countDocuments({ ...query, isApproved: true });
     console.log('[Service] getPaged Total:', total);
     return { novels, total };
   }
@@ -204,7 +298,7 @@ export class NovelsService {
 
   async getByAuthor(authorId: string) {
     return this.novelModel
-      .find({ author: authorId })
+      .find({ author: authorId, isApproved: true })
       .populate('category')
       .populate('chapCount')
       .sort({ updatedAt: -1 })
@@ -213,7 +307,7 @@ export class NovelsService {
 
   async search(text: string) {
     return this.novelModel
-      .find({ title: { $regex: text, $options: 'i' } })
+      .find({ title: { $regex: text, $options: 'i' }, isApproved: true })
       .populate('author')
       .populate('category')
       .limit(20)
@@ -258,7 +352,7 @@ export class NovelsService {
     const skip = (page - 1) * limit;
     const objectId = Types.ObjectId.isValid(cateId) ? new Types.ObjectId(cateId) : null;
 
-    const matchQuery: any = {};
+    const matchQuery: any = { isApproved: true };
     if (objectId) {
       matchQuery.$or = [{ category: cateId }, { category: objectId }];
     } else {
@@ -354,7 +448,7 @@ export class NovelsService {
     const limit = 20;
     const skip = (page - 1) * limit;
 
-    const matchQuery: any = {};
+    const matchQuery: any = { isApproved: true };
     let defaultSort: any = { updatedAt: -1 };
 
     if (turn === 'hoan-thanh') {

@@ -8,12 +8,16 @@ import {
   NotFoundException,
   UseGuards,
   Request,
+  Patch,
+  Delete,
 } from '@nestjs/common';
 import { NovelsService } from './novels.service';
 import { FollowsService } from '../follows/follows.service';
 import { RatingsService } from '../ratings/ratings.service';
 import { CreateNovelDto } from './dto/create-novel.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller('novels')
 export class NovelsController {
@@ -109,15 +113,6 @@ export class NovelsController {
     );
   }
 
-  @Get(':slug')
-  async getNovel(@Param('slug') slug: string) {
-    try {
-      return await this.novelsService.getNovelBySlug(slug);
-    } catch (error) {
-      throw new NotFoundException(error.message);
-    }
-  }
-
   // Old backend used novelId, but param named :novel. 
   @Get('chaps/:novelId')
   async getChapsAlias(
@@ -133,6 +128,20 @@ export class NovelsController {
     @Query('page') page: number,
   ) {
     return this.novelsService.getChaps(novelId, page);
+  }
+
+  @Get('chap/:novelId/:chap')
+  async getChap(
+    @Param('novelId') novelId: string,
+    @Param('chap') chap: number,
+  ) {
+    return this.novelsService.getChap(novelId, chap);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('newchap')
+  async createChap(@Body() createChapDto: any, @Request() req) {
+    return this.novelsService.createChap(createChapDto, req.user._id);
   }
 
   // --- Follow Compatibility ---
@@ -232,5 +241,36 @@ export class NovelsController {
   async searchAll(@Param('text') text: string) {
     // Basic search returning novels
     return this.novelsService.search(text);
+  }
+
+  @Get(':slug')
+  async getNovel(@Param('slug') slug: string) {
+    try {
+      return await this.novelsService.getNovelBySlug(slug);
+    } catch (error) {
+      throw new NotFoundException(error.message);
+    }
+  }
+
+  // --- Admin Moderation ---
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('admin/pending')
+  async getPendingNovels(@Query('page') page: number) {
+    return this.novelsService.getPendingNovels(page || 1);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Patch('admin/approve/:id')
+  async approveNovel(@Param('id') id: string) {
+    return this.novelsService.approveNovel(id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Delete('admin/reject/:id')
+  async rejectNovel(@Param('id') id: string) {
+    return this.novelsService.rejectNovel(id);
   }
 }
