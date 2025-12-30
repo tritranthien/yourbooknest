@@ -1,13 +1,21 @@
-import { Controller, Post, Body, Request, UseGuards, Get, HttpCode, HttpStatus, Patch } from '@nestjs/common';
+import { Controller, Post, Body, Request, UseGuards, Get, HttpCode, HttpStatus, Patch, Param } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { UsersService } from '../users/users.service';
+import { RatingsService } from '../ratings/ratings.service';
+import { CommentsService } from '../comments/comments.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { VotesService } from '../votes/votes.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private authService: AuthService,
     private usersService: UsersService,
+    private ratingsService: RatingsService,
+    private commentsService: CommentsService,
+    private notificationsService: NotificationsService,
+    private votesService: VotesService,
   ) {}
 
   @Post('login')
@@ -34,13 +42,49 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async getMe(@Request() req) {
-    return req.user;
+    return this.usersService.findById(req.user._id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('getmyinfo')
   async getMyInfo(@Request() req) {
-    return req.user;
+    return this.usersService.findById(req.user._id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('getvoted')
+  async getVoted(@Request() req) {
+    return this.votesService.findByUser(req.user._id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('vote/:novelId')
+  async vote(@Param('novelId') novelId: string, @Body() body: any, @Request() req) {
+    return this.votesService.create(novelId, body.goldcard, req.user._id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('getcmt')
+  async getCmt(@Request() req) {
+    return this.commentsService.findByUser(req.user._id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('notis')
+  async getNotis(@Request() req) {
+    return this.notificationsService.findByUser(req.user._id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('readnotis')
+  async readNotis(@Request() req) {
+    return this.notificationsService.markAsRead(req.user._id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('readnotisinnav')
+  async readNotisInNav(@Body() notiIds: string[]) {
+    return this.notificationsService.markListAsRead(notiIds);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -63,5 +107,10 @@ export class AuthController {
     delete safeUpdate.password; // Handle password change in a dedicated endpoint or with encryption
 
     return this.usersService.update(userId, safeUpdate);
+  }
+
+  @Get('findbyname/:text')
+  async findByName(@Param('text') text: string) {
+    return this.usersService.findByName(text);
   }
 }

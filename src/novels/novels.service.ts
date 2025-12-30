@@ -174,15 +174,32 @@ export class NovelsService {
   }
 
   async getByCate(cateId: string, page: number = 1) {
-    return this.getPaged({ category: cateId }, { updatedAt: -1 }, page, 15);
+    const objectId = Types.ObjectId.isValid(cateId) ? new Types.ObjectId(cateId) : null;
+    const query = objectId 
+      ? { $or: [{ category: cateId }, { category: objectId }] }
+      : { category: cateId };
+    return this.getPaged(query, { updatedAt: -1 }, page, 15);
   }
 
   async getCompletedByCate(cateId: string, page: number = 1) {
-    return this.getPaged({ category: cateId, status: 'completed' }, { updatedAt: -1 }, page, 15);
+    const objectId = Types.ObjectId.isValid(cateId) ? new Types.ObjectId(cateId) : null;
+    const categoryQuery = objectId 
+      ? { $or: [{ category: cateId }, { category: objectId }] }
+      : { category: cateId };
+      
+    const query = { ...categoryQuery, status: 'completed' };
+    const result = await this.getPaged(query, { updatedAt: -1 }, page, 10);
+    return result.novels; // Return array as expected by frontend
   }
 
   async getBestViewsByCate(cateId: string, page: number = 1) {
-    return this.getPaged({ category: cateId }, { views: -1 }, page, 15);
+    const objectId = Types.ObjectId.isValid(cateId) ? new Types.ObjectId(cateId) : null;
+    const query = objectId 
+      ? { $or: [{ category: cateId }, { category: objectId }] }
+      : { category: cateId };
+      
+    const result = await this.getPaged(query, { views: -1 }, page, 10);
+    return result.novels; // Return array as expected by frontend
   }
 
   async getByAuthor(authorId: string) {
@@ -223,5 +240,221 @@ export class NovelsService {
       throw new Error('Novel not found');
     }
     return result;
+  }
+
+  async findByUploader(posterId: string): Promise<Novel[]> {
+    return this.novelModel
+      .find({ poster: posterId })
+      .populate('author')
+      .populate('category')
+      .populate('tags.tagId')
+      .populate('chapCount')
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
+  async getFiltered(cateId: string, page: number = 1, status?: string, cnum?: number, sort?: string, search?: string) {
+    const limit = 20;
+    const skip = (page - 1) * limit;
+    const objectId = Types.ObjectId.isValid(cateId) ? new Types.ObjectId(cateId) : null;
+
+    const matchQuery: any = {};
+    if (objectId) {
+      matchQuery.$or = [{ category: cateId }, { category: objectId }];
+    } else {
+      matchQuery.category = cateId;
+    }
+
+    if (status && status !== 'all') {
+      matchQuery.status = status;
+    }
+
+    if (search) {
+      matchQuery.title = { $regex: search, $options: 'i' };
+    }
+
+    const pipeline: any[] = [
+      { $match: matchQuery },
+      {
+        $lookup: {
+          from: 'chaps',
+          localField: '_id',
+          foreignField: 'novel',
+          as: 'chaps',
+        },
+      },
+      {
+        $addFields: {
+          chapCount: { $size: '$chaps' },
+        },
+      },
+    ];
+
+    // Chapter count filtering
+    if (cnum && cnum > 0) {
+      if (cnum > 2000) {
+        pipeline.push({ $match: { chapCount: { $gt: 2000 } } });
+      } else if (cnum > 1000) {
+        pipeline.push({ $match: { chapCount: { $gte: 1000, $lte: 2000 } } });
+      } else if (cnum > 300) {
+        pipeline.push({ $match: { chapCount: { $gte: 300, $lt: 1000 } } });
+      } else {
+        pipeline.push({ $match: { chapCount: { $gt: 0, $lt: 300 } } });
+      }
+    }
+
+    // Sorting
+    const sortStage: any = {};
+    if (sort === 'views') {
+      sortStage.views = -1;
+    } else if (sort === 'likes') {
+      sortStage.likes = -1;
+    } else {
+      sortStage.updatedAt = -1;
+    }
+    pipeline.push({ $sort: sortStage });
+
+    // Pagination & Populating
+    pipeline.push({
+      $facet: {
+        novels: [
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $lookup: {
+              from: 'authors',
+              localField: 'author',
+              foreignField: '_id',
+              as: 'author',
+            },
+          },
+          { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
+          {
+            $lookup: {
+              from: 'cates',
+              localField: 'category',
+              foreignField: '_id',
+              as: 'category',
+            },
+          },
+          { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
+          { $project: { chaps: 0 } }
+        ],
+        totalCount: [{ $count: 'count' }],
+      },
+    });
+
+    const result = await this.novelModel.aggregate(pipeline).exec();
+    const novels = result[0]?.novels || [];
+    const total = result[0]?.totalCount[0]?.count || 0;
+
+    return { novels, total };
+  }
+  async getFilteredByTurn(turn: string, page: number = 1, status?: string, cnum?: number, sort?: string, search?: string) {
+    const limit = 20;
+    const skip = (page - 1) * limit;
+
+    const matchQuery: any = {};
+    let defaultSort: any = { updatedAt: -1 };
+
+    if (turn === 'hoan-thanh') {
+      matchQuery.status = 'completed';
+    } else if (turn === 'truyen-hot' || turn === 'hot') {
+      defaultSort = { views: -1 };
+    }
+
+    if (status && status !== 'all') {
+      matchQuery.status = status;
+    }
+
+    if (search) {
+      matchQuery.title = { $regex: search, $options: 'i' };
+    }
+
+    const pipeline: any[] = [
+      { $match: matchQuery },
+      {
+        $lookup: {
+          from: 'chaps',
+          localField: '_id',
+          foreignField: 'novel',
+          as: 'chaps',
+        },
+      },
+      {
+        $addFields: {
+          chapCount: { $size: '$chaps' },
+        },
+      },
+    ];
+
+    // Chapter count filtering
+    if (cnum && cnum > 0) {
+      if (cnum > 2000) {
+        pipeline.push({ $match: { chapCount: { $gt: 2000 } } });
+      } else if (cnum > 1000) {
+        pipeline.push({ $match: { chapCount: { $gte: 1000, $lte: 2000 } } });
+      } else if (cnum > 300) {
+        pipeline.push({ $match: { chapCount: { $gte: 300, $lt: 1000 } } });
+      } else {
+        pipeline.push({ $match: { chapCount: { $gt: 0, $lt: 300 } } });
+      }
+    }
+
+    // Sorting
+    const sortStage: any = {};
+    if (sort) {
+       if (sort === 'views') {
+        sortStage.views = -1;
+      } else if (sort === 'likes') {
+        sortStage.likes = -1;
+      } else if (sort === 'updatedAt') {
+        sortStage.updatedAt = -1;
+      }
+    } else {
+        // Use default sort from turn if no explicit sort provided
+        Object.assign(sortStage, defaultSort);
+    }
+    
+    // Ensure we always have a sort
+    if(Object.keys(sortStage).length === 0) sortStage.updatedAt = -1;
+
+    pipeline.push({ $sort: sortStage });
+
+    // Pagination & Populating
+    pipeline.push({
+      $facet: {
+        novels: [
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $lookup: {
+              from: 'authors',
+              localField: 'author',
+              foreignField: '_id',
+              as: 'author',
+            },
+          },
+          { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
+          {
+            $lookup: {
+              from: 'cates',
+              localField: 'category',
+              foreignField: '_id',
+              as: 'category',
+            },
+          },
+          { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
+          { $project: { chaps: 0 } }
+        ],
+        totalCount: [{ $count: 'count' }],
+      },
+    });
+
+    const result = await this.novelModel.aggregate(pipeline).exec();
+    const novels = result[0]?.novels || [];
+    const total = result[0]?.totalCount[0]?.count || 0;
+
+    return { novels, total };
   }
 }

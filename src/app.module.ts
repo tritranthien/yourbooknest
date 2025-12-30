@@ -25,6 +25,11 @@ import { FilesModule } from './files/files.module';
 import { AdminModule } from './admin/admin.module';
 import { SettingsModule } from './settings/settings.module';
 import { TagsModule } from './tags/tags.module';
+import { MessagesModule } from './messages/messages.module';
+import { VotesModule } from './votes/votes.module';
+import { VoteSchema } from './schemas/vote.schema';
+import { MessageSchema } from './schemas/message.schema';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -49,6 +54,8 @@ import { TagsModule } from './tags/tags.module';
       { name: 'Ratting', schema: RatingSchema },
       { name: 'Setting', schema: SettingSchema },
       { name: 'Tag', schema: TagSchema },
+      { name: 'Mess', schema: MessageSchema },
+      { name: 'Vote', schema: VoteSchema },
     ]),
     NovelsModule,
     UsersModule,
@@ -61,7 +68,9 @@ import { TagsModule } from './tags/tags.module';
     FilesModule,
     AdminModule,
     SettingsModule,
-    TagsModule,
+    NotificationsModule,
+    MessagesModule,
+    VotesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

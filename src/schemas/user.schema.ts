@@ -3,7 +3,11 @@ import { Document } from 'mongoose';
 
 export type UserDocument = User & Document;
 
-@Schema({ timestamps: true })
+@Schema({
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true },
+})
 export class User {
   @Prop({
     required: true,
@@ -50,5 +54,19 @@ UserSchema.virtual('chapCount', {
   ref: 'Chap',
   localField: '_id',
   foreignField: 'poster',
+  count: true,
+});
+
+UserSchema.virtual('posted', {
+  ref: 'Novel',
+  localField: '_id',
+  foreignField: 'poster',
+  count: true,
+});
+
+UserSchema.virtual('followed', {
+  ref: 'Follow',
+  localField: '_id',
+  foreignField: 'follower',
   count: true,
 });

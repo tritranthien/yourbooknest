@@ -15,6 +15,15 @@ export class UsersService {
     return this.userModel.findOne({ email }).exec();
   }
 
+  async findById(id: string): Promise<UserDocument | null> {
+    return this.userModel
+      .findById(id)
+      .populate('chapCount')
+      .populate('posted')
+      .populate('followed')
+      .exec();
+  }
+
   async create(createUserDto: any): Promise<UserDocument> {
     const createdUser = new this.userModel(createUserDto);
     return createdUser.save();
@@ -49,5 +58,12 @@ export class UsersService {
       // But let's keep it simple for generic updates.
     }
     return this.userModel.findByIdAndUpdate(id, updateUserDto, { new: true }).exec();
+  }
+
+  async findByName(text: string): Promise<UserDocument[]> {
+    return this.userModel
+      .find({ username: { $regex: text, $options: 'i' } })
+      .limit(10)
+      .exec();
   }
 }

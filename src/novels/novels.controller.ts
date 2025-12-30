@@ -29,6 +29,12 @@ export class NovelsController {
     return this.novelsService.create(createNovelDto, req.user._id);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('all')
+  async getAllMyNovels(@Request() req) {
+    return this.novelsService.findByUploader(req.user._id);
+  }
+
   @Get('new')
   async getNewNovels() {
     return this.novelsService.getNewNovels();
@@ -88,19 +94,19 @@ export class NovelsController {
   async getByTurn(
     @Param('turn') turn: string,
     @Query('page') page: number,
+    @Query('stt') stt: string,
+    @Query('cnum') cnum: number,
+    @Query('srt') srt: string,
+    @Query('search') search: string,
   ) {
-    let query = {};
-    let sort = { updatedAt: -1 } as any;
-
-    if (turn === 'truyen-hot' || turn === 'hot') {
-      sort = { views: -1 };
-    } else if (turn === 'moi-nhat') {
-      sort = { updatedAt: -1 };
-    } else if (turn === 'hoan-thanh') {
-      query = { status: 'completed' };
-    }
-
-    return this.novelsService.getPaged(query, sort, page, 15);
+    return this.novelsService.getFilteredByTurn(
+      turn,
+      page || 1,
+      stt,
+      cnum,
+      srt,
+      search
+    );
   }
 
   @Get(':slug')
@@ -146,6 +152,12 @@ export class NovelsController {
   @Get('cancelfollow/:novelId')
   async cancelFollow(@Param('novelId') novelId: string, @Request() req) {
     return this.followsService.remove(novelId, req.user._id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('myfollowed')
+  async getMyFollowed(@Request() req) {
+    return this.followsService.findByUser(req.user._id);
   }
 
   // --- Rating Compatibility ---
@@ -194,6 +206,26 @@ export class NovelsController {
   @Get('getbyauthor/:authorId')
   async getByAuthor(@Param('authorId') authorId: string) {
     return this.novelsService.getByAuthor(authorId);
+  }
+
+  @Get('filterincate/:cateId')
+  async getFiltered(
+    @Param('cateId') cateId: string,
+    @Query('page') page: number,
+    @Query('status') status: string,
+    @Query('stt') stt: string,
+    @Query('cnum') cnum: number,
+    @Query('srt') srt: string,
+    @Query('search') search: string,
+  ) {
+    return this.novelsService.getFiltered(
+      cateId,
+      page || 1,
+      stt || status,
+      cnum,
+      srt,
+      search,
+    );
   }
 
   @Get('search/:text')

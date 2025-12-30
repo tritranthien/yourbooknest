@@ -66,7 +66,16 @@ export class RatingsService {
   async findByNovel(novelId: string) {
     return this.ratingModel
       .find({ novel: novelId })
-      .populate('rater', 'username')
+      .populate('rater', 'username image')
+      .exec();
+  }
+
+  async findByUser(userId: string) {
+    return this.ratingModel
+      .find({ rater: userId })
+      .populate('novel')
+      .sort({ createdAt: -1 })
+      .limit(20)
       .exec();
   }
 }

@@ -39,4 +39,13 @@ export class CommentsService {
       .sort({ createdAt: 1 })
       .exec();
   }
+
+  async findByUser(userId: string) {
+    return this.commentModel
+      .find({ auth: userId })
+      .populate('novel', 'title slug image')
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .exec();
+  }
 }
