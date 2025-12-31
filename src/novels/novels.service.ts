@@ -219,12 +219,12 @@ export class NovelsService implements OnModuleInit {
       throw new NotFoundException('Truyện không tồn tại');
     }
 
-    // Optional: Check approval for public, but for now we'll allow viewing if you have the ID/slug
-    // to help the user test.
-
     const chap = await this.chapModel
       .findOne({ novel: novel._id, chap: num })
-      .populate('novel')
+      .populate({
+        path: 'novel',
+        populate: { path: 'chapCount' }
+      })
       .populate('poster', 'username email')
       .exec();
 
@@ -232,6 +232,22 @@ export class NovelsService implements OnModuleInit {
       throw new NotFoundException('Chương không tồn tại');
     }
     return chap;
+  }
+
+  async getFullChaps(novelId: string): Promise<any> {
+    const novel = await this.novelModel.findOne({
+      $or: [
+        { _id: Types.ObjectId.isValid(novelId) ? new Types.ObjectId(novelId) : null },
+        { slug: novelId }
+      ].filter(Boolean)
+    }).exec();
+
+    if (!novel) throw new NotFoundException('Novel not found');
+
+    return this.chapModel
+      .find({ novel: novel._id }, { content: 0 })
+      .sort({ chap: 1 })
+      .exec();
   }
 
   async createChap(createChapDto: any, posterId: string): Promise<any> {

@@ -122,6 +122,11 @@ export class NovelsController {
     return this.novelsService.getChaps(novelId, page);
   }
 
+  @Get('fullchaps/:novelId')
+  async getFullChaps(@Param('novelId') novelId: string) {
+    return this.novelsService.getFullChaps(novelId);
+  }
+
   @Get(':novelId/chaps')
   async getChaps(
     @Param('novelId') novelId: string,
